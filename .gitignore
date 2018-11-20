@@ -12,3 +12,9 @@ lag_log.csv
 site/*
 build
 .idea
+d2
+.idea
+.vscode
+backup
+venv
+keys
