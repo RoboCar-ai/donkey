@@ -666,7 +666,8 @@ class StartTelemetryClient(BaseCommand):
 
     def parse_args(self, args):
         parser = argparse.ArgumentParser(prog='telemetry-client', usage='%(prog)s [options]')
-        parser.add_argument('--config', default='./config.py', help='location of config file to use. default: ./config.py')
+        parser.add_argument('--config', default='./config.py',
+                            help='location of config file to use. default: ./config.py')
         parsed_args = parser.parse_args(args)
         return parsed_args
 
@@ -679,6 +680,9 @@ class StartTelemetryClient(BaseCommand):
         self.cfg = load_config(args.config)
         self.client = Client(client_id=self.cfg.TELEMETRY_CLIENT_ID, clean_session=self.cfg.TELEMETRY_CLEAN_SESSION)
         self.status_topic = 'robocars/{}/status'.format(self.cfg.TELEMETRY_CLIENT_ID)
+
+        def get_disconnect_message():
+            return json.dumps({'status': 'disconnected'})
 
         def publish(topic, payload):
             return self.client.publish(topic, payload=payload, qos=0)
@@ -693,16 +697,16 @@ class StartTelemetryClient(BaseCommand):
             publish(self.status_topic, mess)
 
         self.client.on_connect = on_connect
+        self.client.will_set('robocars/{}/lwt'.format(self.cfg.TELEMETRY_CLIENT_ID), get_disconnect_message())
         print('connecting to telemetry host:', self.cfg.TELEMETRY_HUB_HOST)
         self.client.connect(self.cfg.TELEMETRY_HUB_HOST)
-        self.client.loop_forever()
-        # self.client.loop_start()
-        #
-        # while True:
-        #     mess = json.dumps({'status': 'connected'})
-        #     print('Sending status message:', mess)
-        #     publish(self.status_topic, mess)
-        #     time.sleep(10)
+
+        try:
+            self.client.loop_forever()
+        except KeyboardInterrupt:
+            print('\nclient stopping...')
+            publish(self.status_topic, get_disconnect_message())
+            self.client.disconnect()
 
 
 def execute_from_command_line():
