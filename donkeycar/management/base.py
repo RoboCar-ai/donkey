@@ -658,11 +658,13 @@ class StartTelemetryClient(BaseCommand):
 
     NOTE: must manually install client with `pip install paho-mqtt`
     '''
+    # TODO: wrap client for abstraction and reusability
     def __init__(self):
         self.args = None
         self.client = None
         self.cfg = None
         self.status_topic = None
+        self.status_client = None
 
     def parse_args(self, args):
         parser = argparse.ArgumentParser(prog='telemetry-client', usage='%(prog)s [options]')
@@ -672,17 +674,13 @@ class StartTelemetryClient(BaseCommand):
         return parsed_args
 
     def run(self, args):
-        from paho.mqtt.client import Client
-
+        from donkeycar.parts.messaging import get_client, StatusClient
         print('running telemetry client')
 
         args = self.parse_args(args)
         self.cfg = load_config(args.config)
-        self.client = Client(client_id=self.cfg.TELEMETRY_CLIENT_ID, clean_session=self.cfg.TELEMETRY_CLEAN_SESSION)
-        self.status_topic = 'robocars/{}/status'.format(self.cfg.TELEMETRY_CLIENT_ID)
-
-        def get_disconnect_message():
-            return json.dumps({'status': 'disconnected'})
+        self.client = get_client(self.cfg)
+        self.status_client = StatusClient(self.cfg, self.client)
 
         def publish(topic, payload):
             return self.client.publish(topic, payload=payload, qos=0)
@@ -692,12 +690,16 @@ class StartTelemetryClient(BaseCommand):
             # Subscribing in on_connect() means that if we lose the connection and
             # reconnect then subscriptions will be renewed.
             # client.subscribe("$SYS/#")
-            mess = json.dumps({'status': 'connected'})
-            print('Sending status message:', mess)
-            publish(self.status_topic, mess)
+            print('Sending status message:', self.status_client.connected_message)
+            self.status_client.send_good_status()
+
+        def drive():
+            import donkeycar.templates.donkey2 as manage
+
+            manage.drive(self.cfg)
 
         self.client.on_connect = on_connect
-        self.client.will_set('robocars/{}/lwt'.format(self.cfg.TELEMETRY_CLIENT_ID), get_disconnect_message())
+        self.client.will_set('robocars/{}/lwt'.format(self.cfg.TELEMETRY_CLIENT_ID), self.status_client.disconnect_message)
         print('connecting to telemetry host:', self.cfg.TELEMETRY_HUB_HOST)
         self.client.connect(self.cfg.TELEMETRY_HUB_HOST)
 
@@ -705,7 +707,7 @@ class StartTelemetryClient(BaseCommand):
             self.client.loop_forever()
         except KeyboardInterrupt:
             print('\nclient stopping...')
-            publish(self.status_topic, get_disconnect_message())
+            self.status_client.send_disconnect_status()
             self.client.disconnect()
 
 
