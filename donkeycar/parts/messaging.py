@@ -35,3 +35,17 @@ class StatusClient:
     def send_disconnect_status(self):
         self.client.publish(self.status_topic, self.disconnect_message)
 
+class ImageTelemetryClient:
+    def __init__(self, cfg, message_client):
+        self.cfg = cfg
+        self.client = message_client
+        self.session_id = None
+
+    def gen_topic(self):
+        if not self.session_id:
+            raise ValueError('session_id is None')
+        return 'robocars/{}/image-telemetry/{}'\
+            .format(self.cfg.TELEMETRY_CLIENT_ID, self.session_id)
+
+    def publish_telemetry(self):
+        pass
