@@ -27,7 +27,7 @@ from donkeycar.parts.throttle_filter import ThrottleFilter
 from donkeycar.parts.behavior import BehaviorPart
 from donkeycar.parts.file_watcher import FileWatcher
 
-def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type='single'):
+def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type='single', cancellation=None):
     '''
     Construct a working robotic vehicle from many parts.
     Each part runs as a job in the Vehicle loop, calling either
@@ -45,7 +45,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
             model_type = "categorical"
     
     #Initialize car
-    V = dk.vehicle.Vehicle()
+    V = dk.vehicle.Vehicle(cancellation=cancellation)
 
     if camera_type == "stereo":
 
@@ -435,6 +435,10 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
     th = TubHandler(path=cfg.DATA_PATH)
     tub = th.new_tub_writer(inputs=inputs, types=types)
     V.add(tub, inputs=inputs, outputs=["tub/num_records"], run_condition='recording')
+
+    if cfg.ENABLE_IMAGE_TELEMETRY:
+        from donkeycar.parts.messaging import ImagePublisher, get_client
+        V.add(ImagePublisher(inputs, cfg, get_client(cfg)), inputs=inputs, run_condition='recording')
 
     if type(ctr) is LocalWebController:
         print("You can now go to <your pi ip address>:8887 to drive your car.")

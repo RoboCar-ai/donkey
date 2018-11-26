@@ -424,3 +424,8 @@ def get_test_img(model):
     img = np.random.rand(int(h), int(w), int(ch))
 
     return img
+
+
+class CancellationToken:
+    def __init__(self):
+        self.stopping = False

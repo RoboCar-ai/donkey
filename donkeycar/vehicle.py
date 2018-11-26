@@ -12,7 +12,7 @@ from .memory import Memory
 
 
 class Vehicle():
-    def __init__(self, mem=None):
+    def __init__(self, mem=None, cancellation=None):
 
         if not mem:
             mem = Memory()
@@ -20,6 +20,7 @@ class Vehicle():
         self.parts = []
         self.on = True
         self.threads = []
+        self.cancellation = cancellation
 
 
     def add(self, part, inputs=[], outputs=[], 
@@ -86,7 +87,8 @@ class Vehicle():
             #time.sleep(1)
 
             loop_count = 0
-            while self.on:
+            while self.on and not self.cancellation.stopping:
+
                 start_time = time.time()
                 loop_count += 1
 

@@ -1,5 +1,9 @@
 from paho.mqtt.client import Client
 from json import dumps as to_json
+from donkeycar.messaging.models.image_pb2 import Image as ImageModel
+from PIL import Image
+from io import BytesIO
+import numpy as np
 
 client = None
 
@@ -42,10 +46,53 @@ class ImageTelemetryClient:
         self.session_id = None
 
     def gen_topic(self):
-        if not self.session_id:
-            raise ValueError('session_id is None')
-        return 'robocars/{}/image-telemetry/{}'\
-            .format(self.cfg.TELEMETRY_CLIENT_ID, self.session_id)
+        # if not self.session_id:
+        #     raise ValueError('session_id is None')
+        return 'robocars/{}/image-telemetry'\
+            .format(self.cfg.TELEMETRY_CLIENT_ID)
 
-    def publish_telemetry(self):
+    def publish_telemetry(self, telemetry):
+        self.client.publish(self.gen_topic(), telemetry)
+
+
+class ImagePublisher:
+    def __init__(self, inputs, cfg, client_):
+        self.client = ImageTelemetryClient(cfg, client_)
+        self.count = 0
+
+        self.steering_index = inputs.index('user/angle')
+        self.mode_index = inputs.index('user/mode')
+        self.throttle_index = inputs.index('user/throttle')
+        self.image_index = inputs.index('cam/image_array')
+
+    def run(self, *data):
+        self.count += 1
+        if self.count % 100 == 0:
+            print('records captured: {}'.format(self.count))
+
+        self.put_record(data)
+
+    def put_record(self, data):
+        """
+        Publishes Images and Telemetry to telemetry hub storage.
+        Uses Lightweight messaging with protocol buffers for light and compact serialization.
+        """
+        img_data = Image.fromarray(np.uint8(data[self.image_index]))
+        raw = BytesIO()
+        img_data.save(raw, format='JPEG')
+
+        image = ImageModel()
+        image.data = raw.getvalue()
+        image.name = '{}.jpg'.format(self.count)
+        image.telemetry.mode = data[self.mode_index]
+        image.telemetry.steering_angle = float(data[self.steering_index])
+        image.telemetry.throttle = data[self.throttle_index]
+        image.telemetry.image_id = self.count
+        self.client.publish_telemetry(image.SerializeToString())
+
+    def shutdown(self):
         pass
+
+
+
+
