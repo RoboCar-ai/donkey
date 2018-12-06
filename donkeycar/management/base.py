@@ -661,11 +661,8 @@ class StartTelemetryClient(BaseCommand):
     # TODO: wrap client for abstraction and reusability
     def __init__(self):
         self.args = None
-        self.client = None
         self.cfg = None
-        self.status_topic = None
-        self.status_client = None
-        self.cancellation = None
+        self.client = None
 
     def parse_args(self, args):
         parser = argparse.ArgumentParser(prog='telemetry-client', usage='%(prog)s [options]')
@@ -675,63 +672,14 @@ class StartTelemetryClient(BaseCommand):
         return parsed_args
 
     def run(self, args):
-        from donkeycar.parts.messaging import get_client, StatusClient
+        from donkeycar.parts.messaging import TelemetryClient
         print('running telemetry client')
 
         args = self.parse_args(args)
         self.cfg = load_config(args.config)
-        self.client = get_client(self.cfg)
-        self.status_client = StatusClient(self.cfg, self.client)
+        self.client = TelemetryClient(self.cfg)
 
-        def publish(topic, payload):
-            return self.client.publish(topic, payload=payload, qos=0)
-
-        def session_callback(client, userdata, msg):
-            import donkeycar.templates.donkey2 as manage
-            from threading import Thread
-            print(str(msg.payload))
-            message = json.loads(msg.payload.decode("utf-8"))
-            name = message['name']
-            status = message['status']
-
-            if status == 'active':
-                print('TelemetryClient: starting drive')
-                self.cancellation = CancellationToken()
-                Thread(target=manage.drive, args=(self.cfg,), kwargs={'cancellation': self.cancellation}).start()
-            elif status == 'inactive':
-                print('TelemetryClient: stopping drive')
-                self.cancellation.stopping = True
-
-        def on_connect(client, userdata, flags, rc):
-            print("Connected with result code " + str(rc))
-            # Subscribing in on_connect() means that if we lose the connection and
-            # reconnect then subscriptions will be renewed.
-            # client.subscribe("$SYS/#")
-            print('Sending status message:', self.status_client.connected_message)
-            self.status_client.send_good_status()
-            session_topic = 'robocars/{}/session'.format(self.cfg.TELEMETRY_CLIENT_ID)
-            print('sub: ', self.client.subscribe(session_topic, 0))
-            self.client.message_callback_add(session_topic, session_callback)
-
-        def on_message(client, userdata, msg):
-            print('On_Message: ' + msg.topic + " " + str(msg.payload))
-
-        def on_subscribe(client, userdata, mid, granted_qos):
-            print('subscribed to:', mid)
-
-        self.client.on_connect = on_connect
-        self.client.on_message = on_message
-        self.client.on_subscribe = on_subscribe
-        self.client.will_set('robocars/{}/lwt'.format(self.cfg.TELEMETRY_CLIENT_ID), self.status_client.disconnect_message)
-        print('connecting to telemetry host:', self.cfg.TELEMETRY_HUB_HOST)
-        self.client.connect(self.cfg.TELEMETRY_HUB_HOST)
-
-        try:
-            self.client.loop_forever()
-        except KeyboardInterrupt:
-            print('\nclient stopping...')
-            self.status_client.send_disconnect_status()
-            self.client.disconnect()
+        self.client.connect()
 
 
 def execute_from_command_line():

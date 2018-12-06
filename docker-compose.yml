@@ -1,0 +1,8 @@
+version: '3'
+services:
+  trainer:
+    image: blown302/trainer
+    build: .
+    volumes:
+      - ../donkey-docker/data/sessions/:/data
+        #command: "donkey contrain --type linear --model models/imitation.h5 --tub '/data/apt/*'"

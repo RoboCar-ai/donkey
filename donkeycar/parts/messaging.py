@@ -1,37 +1,20 @@
 from paho.mqtt.client import Client
 from json import dumps as to_json
 from donkeycar.messaging.models.image_pb2 import Image as ImageModel
+from donkeycar.utils import CancellationToken
 from PIL import Image
 from io import BytesIO
 import numpy as np
+import json
 
-client = None
-
-def get_client(cfg):
-    '''
-    client factory that gets the wrapped client where the underling client
-    object is a singleton to not disconnect other components
-    and an internal bridge is not required.
-
-    This enables a singe TCP socket to the telemetry hub.
-
-    TODO: use a interal hub for inter part comm or something like ROS.
-    :param cfg: configuration object
-    :return: Client to pub/sub
-    '''
-    global client
-    if not client:
-        client = Client(client_id=cfg.TELEMETRY_CLIENT_ID, clean_session=cfg.TELEMETRY_CLEAN_SESSION)
-
-    return client
 
 class StatusClient:
     def __init__(self, cfg, message_client):
         self.client = message_client
         self.cfg = cfg
         self.status_topic = 'robocars/{}/status'.format(self.cfg.TELEMETRY_CLIENT_ID)
-        self.disconnect_message = to_json({'status': 'disconnected'})
-        self.connected_message = to_json({'status': 'connected'})
+        self.disconnect_message = to_json({'connectionStatus': 'disconnected'})
+        self.connected_message = to_json({'connectionStatus': 'connected'})
 
     def send_good_status(self):
         self.client.publish(self.status_topic, self.connected_message)
@@ -53,6 +36,35 @@ class ImageTelemetryClient:
 
     def publish_telemetry(self, telemetry):
         self.client.publish(self.gen_topic(), telemetry)
+
+
+class SessionClient:
+    def __init__(self, cfg, message_client):
+        self.client = message_client
+        self.cfg = cfg
+        self.topic = 'robocars/{}/session'.format(self.cfg.TELEMETRY_CLIENT_ID)
+
+    def init(self):
+        self.client.subscribe(self.topic, 0)
+        self.client.message_callback_add(self.topic, self.session_callback)
+
+    def session_callback(self, client, userdata, msg):
+        import donkeycar.templates.donkey2 as manage
+        from threading import Thread
+        print(str(msg.payload))
+        message = json.loads(msg.payload.decode("utf-8"))
+        name = message['name']
+        status = message['status']
+
+        if status == 'active':
+            print('TelemetryClient: starting drive')
+            self.cancellation = CancellationToken()
+            Thread(target=manage.drive, args=(self.cfg,),
+                   kwargs={'cancellation': self.cancellation, 'model_path': 'd2/models/imitation.h5',
+                           'model_type': 'linear'}).start()
+        elif status == 'inactive':
+            print('TelemetryClient: stopping drive')
+            self.cancellation.stopping = True
 
 
 class ImagePublisher:
@@ -92,6 +104,47 @@ class ImagePublisher:
 
     def shutdown(self):
         pass
+
+
+class TelemetryClient:
+    def __init__(self, cfg):
+        self.client = None
+        self.cfg = cfg
+        self.status_client = None
+        self.session_client = None
+
+    def connect(self):
+        self.client = Client(client_id=self.cfg.TELEMETRY_CLIENT_ID, clean_session=self.cfg.TELEMETRY_CLEAN_SESSION)
+        self.status_client = StatusClient(self.cfg, self.client)
+        self.session_client = SessionClient(self.cfg, self.client)
+        self.client.on_subscribe = TelemetryClient.on_subscribe
+        self.client.on_connect = self.on_connect
+        self.client.will_set('robocars/{}/lwt'.format(self.cfg.TELEMETRY_CLIENT_ID), self.status_client.disconnect_message)
+
+        print('connecting to telemetry host:', self.cfg.TELEMETRY_HUB_HOST)
+        self.client.connect(self.cfg.TELEMETRY_HUB_HOST)
+
+        try:
+            self.client.loop_forever()
+        except KeyboardInterrupt:
+            print('\nclient stopping...')
+            self.status_client.send_disconnect_status()
+            self.client.disconnect()
+
+    def on_connect(self, client, userdata, flags, rc):
+        print("Connected with result code " + str(rc))
+        self.session_client.init()
+        print('Sending status message:', self.status_client.connected_message)
+        self.status_client.send_good_status()
+
+    @staticmethod
+    def on_subscribe(client, userdata, mid, granted_qos):
+        print('subscribed to:', mid)
+
+
+
+
+
 
 
 
