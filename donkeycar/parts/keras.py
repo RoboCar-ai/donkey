@@ -134,7 +134,7 @@ class KerasLinear(KerasPilot):
         return steering[0][0], throttle[0][0]
 
 
-class KerasLinearDeep(KerasPilot):
+class KerasLinearDeepFc(KerasPilot):
     def __init__(self, input_shape=(120, 160, 3), *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.model = default_linear_deep(input_shape)
