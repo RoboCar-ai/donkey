@@ -115,8 +115,7 @@ class KerasCategorical(KerasPilot):
             throttle = throttle[0][0]
         angle_unbinned = dk.utils.linear_unbin(angle_binned)
         return angle_unbinned, throttle
-    
-    
+
     
 class KerasLinear(KerasPilot):
     def __init__(self, num_outputs=2, input_shape=(120, 160, 3), *args, **kwargs):
@@ -125,8 +124,7 @@ class KerasLinear(KerasPilot):
         self.compile()
 
     def compile(self):
-        self.model.compile(optimizer=self.optimizer,
-                loss='mse')
+        self.model.compile(optimizer=self.optimizer, loss='mse')
 
     def run(self, img_arr):
         img_arr = img_arr.reshape((1,) + img_arr.shape)
@@ -135,6 +133,22 @@ class KerasLinear(KerasPilot):
         throttle = outputs[1]
         return steering[0][0], throttle[0][0]
 
+
+class KerasLinearDeep(KerasPilot):
+    def __init__(self, input_shape=(120, 160, 3), *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.model = default_linear_deep(input_shape)
+        self.compile()
+
+    def compile(self):
+        self.model.compile(optimizer=self.optimizer, loss='mse')
+
+    def run(self, img_arr):
+        img_arr = img_arr.reshape((1,) + img_arr.shape)
+        outputs = self.model.predict(img_arr)
+        steering = outputs[0]
+        throttle = outputs[1]
+        return steering[0][0], throttle[0][0]
 
 
 class KerasIMU(KerasPilot):
@@ -327,6 +341,44 @@ def default_n_linear(num_outputs, input_shape):
     return model
 
 
+def default_linear_deep(input_shape):
+    from keras.layers import Input, Dense
+    from keras.models import Model
+    from keras.layers import Convolution2D, MaxPooling2D, Reshape, BatchNormalization
+    from keras.layers import Activation, Dropout, Flatten, Cropping2D, Lambda
+    drop = 0.1
+
+    img_in = Input(shape=input_shape, name='img_in')
+    x = img_in
+    x = Cropping2D(cropping=((50, 0), (0, 0)))(x)  # trim 10 pixels off top
+    x = Lambda(lambda x: x / 127.5 - 1.)(x)  # normalize and re-center
+    x = Convolution2D(24, (5, 5), strides=(2, 2), activation='relu')(x)
+    x = Dropout(drop)(x)
+    x = Convolution2D(32, (5, 5), strides=(2, 2), activation='relu')(x)
+    x = Dropout(drop)(x)
+    x = Convolution2D(64, (5, 5), strides=(2, 2), activation='relu')(x)
+    x = Dropout(drop)(x)
+    x = Convolution2D(64, (3, 3), strides=(1, 1), activation='relu')(x)
+    x = Dropout(drop)(x)
+    x = Convolution2D(64, (3, 3), strides=(1, 1), activation='relu')(x)
+    x = Dropout(drop)(x)
+
+    x = Flatten(name='flattened')(x)
+    x = Dense(1024, activation='relu')(x)
+    x = Dropout(drop)(x)
+    x = Dense(512, activation='relu')(x)
+    x = Dropout(drop)(x)
+    x = Dense(100, activation='relu')(x)
+    x = Dropout(drop)(x)
+    x = Dense(50, activation='relu')(x)
+    x = Dropout(drop)(x)
+
+    angle_out = Dense(1, activation='linear', name='angle_out')(x)
+    throttle_out = Dense(1, activation='linear', name='throttle_out')(x)
+
+    model = Model(inputs=[img_in], outputs=[angle_out, throttle_out])
+
+    return model
 
 def default_imu(num_outputs, num_imu_inputs, input_shape):
     '''
