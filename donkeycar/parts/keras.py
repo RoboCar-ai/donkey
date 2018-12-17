@@ -350,7 +350,7 @@ def default_linear_deep(input_shape):
 
     img_in = Input(shape=input_shape, name='img_in')
     x = img_in
-    x = Cropping2D(cropping=((50, 0), (0, 0)))(x)  # trim 10 pixels off top
+    x = Cropping2D(cropping=((50, 0), (0, 0)))(x)  # trim 50 pixels off top
     # x = Lambda(lambda x: x / 127.5 - 1.)(x)  # normalize and re-center
     x = Convolution2D(24, (5, 5), strides=(2, 2), activation='relu')(x)
     x = Dropout(drop)(x)
