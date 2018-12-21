@@ -389,7 +389,7 @@ def gather_records(cfg, tub_names, opts=None, verbose=False):
     return records
 
 def get_model_by_type(model_type, cfg):
-    from donkeycar.parts.keras import KerasRNN_LSTM, KerasBehavioral, KerasCategorical, KerasIMU, KerasLinear, KerasLinearDeepFc, Keras3D_CNN, KerasLocalizer
+    from donkeycar.parts.keras import KerasRNN_LSTM, KerasBehavioral, KerasCategorical, KerasIMU, KerasLinear, KerasLinearDeepFc, KerasAppInceptionV3, Keras3D_CNN, KerasLocalizer
  
     if model_type is None:
         model_type = "categorical"
@@ -406,6 +406,8 @@ def get_model_by_type(model_type, cfg):
         kl = KerasLinear(input_shape=input_shape)
     elif model_type == "linear-deep-fc":
         kl = KerasLinearDeepFc(input_shape=input_shape)
+    elif model_type == "linear-inception":
+        kl = KerasAppInceptionV3(input_shape=input_shape)
     elif model_type == "3d":
         kl = Keras3D_CNN(image_w=cfg.IMAGE_W, image_h=cfg.IMAGE_H, image_d=cfg.IMAGE_DEPTH, seq_length=cfg.SEQUENCE_LENGTH)
     elif model_type == "rnn":
