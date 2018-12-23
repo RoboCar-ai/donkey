@@ -47,7 +47,7 @@ class KerasPilot(object):
             raise Exception("unknown optimizer type: %s" % optimizer_type)
     
     def train(self, train_gen, val_gen, 
-              saved_model_path, epochs=100, steps=100, val_steps=5,
+              saved_model_path, epochs=100, steps=100, val_steps=5, train_split=0.8,
               verbose=1, min_delta=.0005, patience=5, use_early_stop=True):
         
         """
@@ -73,6 +73,9 @@ class KerasPilot(object):
 
         if use_early_stop:
             callbacks_list.append(early_stop)
+
+        if not val_steps:
+            val_steps = steps*(1.0 - train_split)
         
         hist = self.model.fit_generator(
                         train_gen, 
@@ -177,12 +180,16 @@ class KerasLinearLoc(KerasPilot):
         x = Dropout(drop)(x)
 
         x = Flatten(name='flattened')(x)
-        x = Dense(500, activation='relu')(x)
+        x = Dense(100, activation='relu')(x)
+        x = Dropout(drop)(x)
+        x = Dense(50, activation='relu')(x)
+        x = Dropout(drop)(x)
 
         angle_out = Dense(1, activation='linear', name='angle_out')(x)
         throttle_out = Dense(1, activation='linear', name='throttle_out')(x)
+        d_coord_out = Dense(1, activation='linear', name='d_coord_out')(x)
 
-        self.model = Model(inputs=[img_in], outputs=[angle_out, throttle_out])
+        self.model = Model(inputs=[img_in], outputs=[angle_out, throttle_out, d_coord_out])
         self.compile()
 
     def compile(self):
@@ -193,7 +200,10 @@ class KerasLinearLoc(KerasPilot):
         outputs = self.model.predict(img_arr)
         steering = outputs[0]
         throttle = outputs[1]
+        d_coord = outputs[2]
+        print('d coord: {}'.format(d_coord))
         return steering[0][0], throttle[0][0]
+
 
 class KerasAppInceptionV3(KerasPilot):
     def __init__(self, input_shape=(224, 224, 3), *args, **kwargs):
@@ -228,6 +238,100 @@ class KerasAppInceptionV3(KerasPilot):
         steering = outputs[0]
         throttle = outputs[1]
         return steering[0][0], throttle[0][0]
+
+class KerasAppInceptionV3Loc256(KerasPilot):
+    def __init__(self, input_shape=(120, 160, 3), *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from keras.applications.inception_v3 import InceptionV3
+        from keras.layers import Dense, Cropping2D, Lambda, Input
+        from keras.models import Model
+
+        img_in = Input(shape=input_shape)
+        x = img_in
+        # x = Cropping2D(cropping=((50,0), (0,0)))(x)
+        # x = Lambda(lambda x: cv2.resize(x, (224, 224)))(img_in)
+        base = InceptionV3(input_tensor=x, include_top=False, weights='imagenet', pooling='avg')
+        x = base.output
+        x = Dense(256, activation='relu')(x)
+        d_coord_out = Dense(1)(x)
+
+        self.model = Model(inputs=[base.input], outputs=[d_coord_out])
+        self.compile()
+
+        for layer in base.layers:
+            layer.trainable = False
+
+    def compile(self):
+        self.model.compile(optimizer=self.optimizer, loss='mse')
+
+    def run(self, img_arr):
+        img_arr = img_arr.reshape((1,) + img_arr.shape)
+        outputs = self.model.predict(img_arr)
+        d_out = outputs[0]
+        return d_out[0][0]
+
+
+class KerasAppInceptionV3Loc512(KerasPilot):
+    def __init__(self, input_shape=(120, 160, 3), *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from keras.applications.inception_v3 import InceptionV3
+        from keras.layers import Dense, Cropping2D, Lambda, Input
+        from keras.models import Model
+
+        img_in = Input(shape=input_shape)
+        x = img_in
+        # x = Cropping2D(cropping=((50,0), (0,0)))(x)
+        # x = Lambda(lambda x: cv2.resize(x, (224, 224)))(img_in)
+        base = InceptionV3(input_tensor=x, include_top=False, weights='imagenet', pooling='avg')
+        x = base.output
+        x = Dense(512, activation='relu')(x)
+        d_coord_out = Dense(1)(x)
+
+        self.model = Model(inputs=[base.input], outputs=[d_coord_out])
+        self.compile()
+
+        for layer in base.layers:
+            layer.trainable = False
+
+    def compile(self):
+        self.model.compile(optimizer=self.optimizer, loss='mse')
+
+    def run(self, img_arr):
+        img_arr = img_arr.reshape((1,) + img_arr.shape)
+        outputs = self.model.predict(img_arr)
+        print(outputs)
+        return None
+
+
+class KerasAppInceptionV3Loc1024(KerasPilot):
+    def __init__(self, input_shape=(120, 160, 3), *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from keras.applications.inception_v3 import InceptionV3
+        from keras.layers import Dense, Cropping2D, Lambda, Input
+        from keras.models import Model
+
+        img_in = Input(shape=input_shape)
+        x = img_in
+        # x = Cropping2D(cropping=((50,0), (0,0)))(x)
+        # x = Lambda(lambda x: cv2.resize(x, (224, 224)))(img_in)
+        base = InceptionV3(input_tensor=x, include_top=False, weights='imagenet', pooling='avg')
+        x = base.output
+        x = Dense(1024, activation='relu')(x)
+        d_coord_out = Dense(1)(x)
+
+        self.model = Model(inputs=[base.input], outputs=[d_coord_out])
+        self.compile()
+
+        for layer in base.layers:
+            layer.trainable = False
+
+    def compile(self):
+        self.model.compile(optimizer=self.optimizer, loss='mse')
+
+    def run(self, img_arr):
+        # img_arr = img_arr.reshape((1,) + img_arr.shape)
+        outputs = self.model.predict(img_arr)
+        return outputs
 
 
 class KerasIMU(KerasPilot):
