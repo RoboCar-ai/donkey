@@ -93,7 +93,7 @@ class TFLitePilot:
         elif tf.__version__.startswith('1.11'):
             self.Interpreter = tf.contrib.lite.Interpreter
         else: 
-            raise ValueError('unsupported version of tensorflow lite {}, must be >= 1.11'.tf.__version__)
+            raise ValueError('unsupported version of tensorflow lite {}, must be >= 1.1'.format(tf.__version__))
 
         self.tf = tf
 
