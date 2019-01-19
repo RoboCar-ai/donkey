@@ -389,8 +389,10 @@ def gather_records(cfg, tub_names, opts=None, verbose=False):
     return records
 
 def get_model_by_type(model_type, cfg):
-    from donkeycar.parts.keras import KerasRNN_LSTM, KerasBehavioral, KerasCategorical, KerasIMU, KerasLinear, Keras3D_CNN, KerasLocalizer, TFLiteCategorical, TFLiteLinear
+    # from donkeycar.parts.keras import KerasRNN_LSTM, KerasBehavioral, KerasCategorical, KerasIMU, KerasLinear, Keras3D_CNN, KerasLocalizer, TFLiteCategorical, TFLiteLinear
  
+    from donkeycar.parts.tflite import TFLiteCategorical, TFLiteLinear
+
     if model_type is None:
         model_type = "categorical"
 
