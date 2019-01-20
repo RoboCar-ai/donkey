@@ -405,6 +405,7 @@ def get_model_by_type(model_type, cfg):
     elif model_type == "imu":
         kl = KerasIMU(num_outputs=2, num_imu_inputs=6, input_shape=input_shape)        
     elif model_type == "linear":
+        from donkeycar.parts.keras import KerasLinear
         kl = KerasLinear(input_shape=input_shape)
     elif model_type == "3d":
         kl = Keras3D_CNN(image_w=cfg.IMAGE_W, image_h=cfg.IMAGE_H, image_d=cfg.IMAGE_DEPTH, seq_length=cfg.SEQUENCE_LENGTH)
