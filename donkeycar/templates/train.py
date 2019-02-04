@@ -596,9 +596,9 @@ def go_train(kl, cfg, train_gen, val_gen, gen_records, model_name, steps_per_epo
         cnn_channels = get_total_channels(kl.model)
         print('original model with {} channels'.format(cnn_channels))
         prune_gen = SequencePredictionGenerator(gen_records, cfg)
-        target_channels = int(cnn_channels * (1 - (cfg.PRUNE_PERCENT_TARGET / 100)))
+        target_channels = int(cnn_channels * cfg.PRUNE_PERCENT_TARGET)
 
-        print('Target channels of {0} remaining with {1:.00%} percent removal per iteration'.format(target_channels, cfg.PRUNE_PERCENT_PER_ITERATION / 100))
+        print('Target channels of {0} remaining with {1:.00%} percent removal per iteration'.format(target_channels, cfg.PRUNE_PERCENT_PER_ITERATION))
         
         from keras.models import load_model
         prune_loss = 0
@@ -878,7 +878,7 @@ def multi_train(cfg, tub, model, transfer, model_type, continuous, aug):
 def prune(model, validation_generator, val_steps, cfg):
     percent_pruning = cfg.PRUNE_PERCENT_PER_ITERATION
     total_channels = get_total_channels(model)
-    n_channels_delete = int(math.floor(percent_pruning / 100 * total_channels))
+    n_channels_delete = int(percent_pruning * total_channels)
 
     apoz_df = get_model_apoz(model, validation_generator)
 
