@@ -324,9 +324,34 @@ class MQTTValuePub(object):
         z = zlib.compress(p)
         self.client.publish(self.name, z)
 
+class AwsIotCore(object):
+    '''
+    Use Iot Core MQTT broker and services.
+    pip install AWSIoTPythonSDK
+    '''
+
+    def __init__(self, client_id, topic, broker="iot.eclipse.org"):
+        from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
+        self.client = AWSIoTMQTTClient(client_id)
+        self.topic = topic
+        self.client.configureEndpoint(broker, 8883)
+        print("connecting to broker", broker)
+        self.client.connect(broker)
+        self.client.configureOfflinePublishQueueing(-1) # Infinite offline Publish queueing
+        self.client.configureDrainingFrequency(20) # Draining: 20 Hz
+        self.client.configureConnectDisconnectTimeout(10)  # 10 sec
+        self.client.configureMQTTOperationTimeout(5)  # 5 sec
+        self.client.connect()
+        print("connected.")
+
+    def run(self, values):
+        packet = {"name": self.topic, "val": values}
+        p = pickle.dumps(packet)
+        z = zlib.compress(p)
+        self.client.publish(self.topic, z)
+
     def shutdown(self):
         self.client.disconnect()
-        self.client.loop_stop()
 
 
 class MQTTValueSub(object):
