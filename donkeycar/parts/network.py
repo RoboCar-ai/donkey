@@ -2,6 +2,8 @@ import socket
 import zlib, pickle
 import zmq
 import time
+import json
+import os.path as ospath
 
 class ZMQValuePub(object):
     '''
@@ -318,37 +320,55 @@ class MQTTValuePub(object):
         self.client.loop_start()
         print("connected.")
 
-    def run(self, values):
+    def run(self, *args):
+        values = zip(self.inputs, args)
         packet = { "name": self.name, "val" : values }
         p = pickle.dumps(packet)
         z = zlib.compress(p)
         self.client.publish(self.name, z)
 
-class AwsIotCore(object):
+class AwsIotCore:
     '''
     Use Iot Core MQTT broker and services.
     pip install AWSIoTPythonSDK
     '''
 
-    def __init__(self, client_id, topic, broker="iot.eclipse.org"):
+    def __init__(self, cfg,  client_id, topic, broker="iot.eclipse.org", inputs=[]):
         from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
         self.client = AWSIoTMQTTClient(client_id)
-        self.topic = topic
+        self.topic = ospath.join(topic, "session_name")
+        self.inputs = inputs
+        self.cfg = cfg
         self.client.configureEndpoint(broker, 8883)
         print("connecting to broker", broker)
-        self.client.connect(broker)
+
         self.client.configureOfflinePublishQueueing(-1) # Infinite offline Publish queueing
         self.client.configureDrainingFrequency(20) # Draining: 20 Hz
-        self.client.configureConnectDisconnectTimeout(10)  # 10 sec
+        self.client.configureConnectDisconnectTimeout(60)  # 10 sec
+        self.client.configureCredentials(self.cfg.AWS_IOT_ROOT_CA, self.cfg.AWS_IOT_KEY, self.cfg.AWS_IOT_CERT)
         self.client.configureMQTTOperationTimeout(5)  # 5 sec
-        self.client.connect()
-        print("connected.")
+        self.client.connectAsync()
 
-    def run(self, values):
+        print("connected.")
+        def customCallback(client, userdata, message):
+            print("Received a new message: ")
+            p = zlib.decompress(message.payload)
+            print(pickle.loads(p))
+            print("from topic: ")
+            print(message.topic)
+            print("--------------\n\n")
+        
+        self.counter = 0
+        # self.client.subscribe(self.topic, 0, customCallback)
+    def run(self, *args):
+        values = dict(zip(self.inputs, args))
+
         packet = {"name": self.topic, "val": values}
         p = pickle.dumps(packet)
         z = zlib.compress(p)
-        self.client.publish(self.topic, z)
+        # print('publishing data {}'.format(values))
+        self.counter += 1
+        self.client.publish(ospath.join(self.topic, str(self.counter) + '.pickle'), bytearray(z), 0)
 
     def shutdown(self):
         self.client.disconnect()
@@ -359,9 +379,9 @@ class MQTTValueSub(object):
     Use MQTT to recv values on network
     pip install paho-mqtt
     '''
-    def __init__(self, name, broker="iot.eclipse.org", def_value=None):
+    def __init__(self, cfg, name, broker="iot.eclipse.org", def_value=None):
         from paho.mqtt.client import Client
-
+        self.cfg = cfg
         self.name = name
         self.data = None
         self.client = Client(clean_session=True)
@@ -488,26 +508,45 @@ def test_mqtt_pub_sub(ip):
             print("got:", res)
             time.sleep(0.1)
 
+class Config:
+    def __init__(self):
+        self.AWS_IOT_ROOT_CA = "/home/blown302/ros-robocar/certs/root-ca.pem"
+        self.AWS_IOT_CERT = "/home/blown302/ros-robocar/certs/test.cert.pem"
+        self.AWS_IOT_KEY = "/home/blown302/ros-robocar/certs/test.private.key"
+
 if __name__ == "__main__":
-    import time
-    import sys
+    # import time
+    # import sys
 
-    #usage:
-    #  for subscriber test, pass ip arg like:
-    # python network.py ip=localhost
-    #
-    #  for publisher test, pass no args
-    # python network.py
+    # #usage:
+    # #  for subscriber test, pass ip arg like:
+    # # python network.py ip=localhost
+    # #
+    # #  for publisher test, pass no args
+    # # python network.py
 
-    ip = None
+    # ip = None
 
-    for arg in sys.argv:
-        if "ip=" in arg:
-            ip = arg[3:]
+    # for arg in sys.argv:
+    #     if "ip=" in arg:
+    #         ip = arg[3:]
 
-    #test_pub_sub(ip)
-    #test_udp_broadcast(ip)
-    #test_mqtt_pub_sub(ip)
-    test_tcp_client_server(ip)
+    # #test_pub_sub(ip)
+    # #test_udp_broadcast(ip)
+    # #test_mqtt_pub_sub(ip)
+    # test_tcp_client_server(ip)
+
+    #client_id, topic, broker
+    #char rootCA[] = "/home/blown302/ros-robocar/certs/root-ca.pem";
+    #  char clientCRT[] = "/home/blown302/ros-robocar/certs/test.cert.pem";
+    # char clientKey[] = "/home/blown302/ros-robocar/certs/test.private.key";
+    
+
+    client = AwsIotCore(cfg=Config(), broker='a1pj26jvxq66z4-ats.iot.us-east-2.amazonaws.com', client_id='test', topic='image_telemetry')
+    for i in range(100):
+        client.run({'test': 'test'})
+        time.sleep(1)
+
+
     
 
