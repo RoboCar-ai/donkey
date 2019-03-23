@@ -126,7 +126,6 @@ HAVE_SOMBRERO = False
 
 #RECORD OPTIONS
 RECORD_DURING_AI = False
-USE_REWARDS = False
 
 #LED
 HAVE_RGB_LED = False
@@ -181,6 +180,7 @@ PUB_CAMERA_IMAGES = False
 AWS_IOT_ROOT_CA = ''
 AWS_IOT_KEY = ''
 AWS_IOT_CERT = ''
+AWS_CLIENT_ID = ''
 
 
 #meta data. Strings describing location and/or task

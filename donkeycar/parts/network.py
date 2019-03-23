@@ -335,7 +335,7 @@ class AwsIotCore:
 
     def __init__(self, cfg,  client_id, topic, broker="iot.eclipse.org", inputs=[]):
         from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
-        self.client = AWSIoTMQTTClient(client_id)
+        self.client = AWSIoTMQTTClient(cfg.AWS_CLIENT_ID)
         self.topic = ospath.join(topic, "session_name")
         self.inputs = inputs
         self.cfg = cfg
