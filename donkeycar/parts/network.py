@@ -350,7 +350,7 @@ class AwsIotCore:
         def connectCallback(client, userdata, message):
             print("connect cb called")
 
-        self.client.connectAsync(connectCallback)
+        self.client.connectAsync(600, connectCallback)
 
         print("connected.")
         def customCallback(client, userdata, message):
