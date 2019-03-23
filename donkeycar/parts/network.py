@@ -347,6 +347,7 @@ class AwsIotCore:
         self.client.configureConnectDisconnectTimeout(5)  # 10 sec
         self.client.configureCredentials(self.cfg.AWS_IOT_ROOT_CA, self.cfg.AWS_IOT_KEY, self.cfg.AWS_IOT_CERT)
         self.client.configureMQTTOperationTimeout(5)  # 5 sec
+
         def connectCallback(client, userdata, message):
             print("connect cb called")
 
