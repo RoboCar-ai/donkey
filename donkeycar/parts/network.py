@@ -344,13 +344,13 @@ class AwsIotCore:
 
         self.client.configureOfflinePublishQueueing(-1) # Infinite offline Publish queueing
         self.client.configureDrainingFrequency(20) # Draining: 20 Hz
-        self.client.configureConnectDisconnectTimeout(60)  # 10 sec
+        self.client.configureConnectDisconnectTimeout(5)  # 10 sec
         self.client.configureCredentials(self.cfg.AWS_IOT_ROOT_CA, self.cfg.AWS_IOT_KEY, self.cfg.AWS_IOT_CERT)
         self.client.configureMQTTOperationTimeout(5)  # 5 sec
         def connectCallback(client, userdata, message):
             print("connect cb called")
 
-        self.client.connectAsync(600, connectCallback)
+        self.client.connectAsync(60, connectCallback)
 
         print("connected.")
         def customCallback(client, userdata, message):
