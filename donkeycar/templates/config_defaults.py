@@ -178,6 +178,10 @@ DONKEY_GYM_ENV_NAME = "donkey-generated-track-v0" # "donkey-generated-track-v0" 
 
 #publish camera over network
 PUB_CAMERA_IMAGES = False
+AWS_IOT_ROOT_CA = ''
+AWS_IOT_KEY = ''
+AWS_IOT_CERT = ''
+
 
 #meta data. Strings describing location and/or task
 DRIVE_LOCATION = None
