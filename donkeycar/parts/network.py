@@ -333,46 +333,52 @@ class AwsIotCore:
     pip install AWSIoTPythonSDK
     '''
 
-    def __init__(self, cfg, topic, broker="iot.eclipse.org", inputs=[]):
+    def __init__(self, cfg, broker="iot.eclipse.org", inputs=[]):
         from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
         self.client = AWSIoTMQTTClient(cfg.AWS_CLIENT_ID)
-        self.topic = ospath.join(topic, "session_name")
+        self.topic = 'image_telemetry'
+        self.session_topic = 'sessionupdate/{}'.format(cfg.AWS_CLIENT_ID)
+        self.session_id = None
+        self.session_name = None
         self.inputs = inputs
         self.cfg = cfg
         self.client.configureEndpoint(broker, 8883)
         print("connecting to broker", broker)
 
         self.client.configureOfflinePublishQueueing(-1) # Infinite offline Publish queueing
-        self.client.configureDrainingFrequency(20) # Draining: 20 Hz
-        self.client.configureConnectDisconnectTimeout(5)  # 10 sec
+        self.client.configureDrainingFrequency(2) # Draining: 20 Hz
+        self.client.configureConnectDisconnectTimeout(20)  # 10 sec
         self.client.configureCredentials(self.cfg.AWS_IOT_ROOT_CA, self.cfg.AWS_IOT_KEY, self.cfg.AWS_IOT_CERT)
-        self.client.configureMQTTOperationTimeout(5)  # 5 sec
+        self.client.configureMQTTOperationTimeout(10)  # 5 sec
 
-        def connectCallback(client, userdata, message):
-            print("connect cb called")
-
-        self.client.connectAsync()
+        self.client.connect()
 
         print("connected.")
-        def customCallback(client, userdata, message):
-            print("Received a new message: ")
-            p = zlib.decompress(message.payload)
-            print(pickle.loads(p))
+
+        def session_callback(client, userdata, message):
+            print("updating session")
             print("from topic: ")
             print(message.topic)
+            data = json.loads(message.payload)
+            self.session_name = data['name']
+            self.session_id = data['id']
+            print(data)
             print("--------------\n\n")
+            # print('saving session: {}'.format(message.data))
 
         self.counter = 0
-        # self.client.subscribe(self.topic, 0, customCallback)
-    def run(self, *args):
-        values = dict(zip(self.inputs, args))
+        self.client.subscribe(self.session_topic, 1, session_callback)
 
-        packet = {"name": self.topic, "val": values}
-        p = pickle.dumps(packet)
-        z = zlib.compress(p)
-        # print('publishing data {}'.format(values))
-        self.counter += 1
-        self.client.publish(ospath.join(self.topic, str(self.counter) + '.pickle'), bytearray(z), 0)
+    def run(self, *args):
+        if self.session_id and self.session_name: # negotiated a session.
+            values = dict(zip(self.inputs, args))
+
+            packet = {"name": self.topic, "val": values}
+            p = pickle.dumps(packet)
+            z = zlib.compress(p)
+            # print('publishing data {}'.format(values))
+            self.counter += 1
+            self.client.publish(ospath.join(self.topic, self.session_name, str(self.session_id),  str(self.counter) + '.pickle'), bytearray(z), 0)
 
     def shutdown(self):
         self.client.disconnect()
@@ -514,9 +520,11 @@ def test_mqtt_pub_sub(ip):
 
 class Config:
     def __init__(self):
-        self.AWS_IOT_ROOT_CA = "/home/blown302/ros-robocar/certs/root-ca.pem"
-        self.AWS_IOT_CERT = "/home/blown302/ros-robocar/certs/test.cert.pem"
-        self.AWS_IOT_KEY = "/home/blown302/ros-robocar/certs/test.private.key"
+        self.AWS_IOT_ROOT_CA = "/Users/blown302/d2/keys/AmazonRootCA1.pem.txt"
+        self.AWS_IOT_CERT = "/Users/blown302/d2/keys/6095215bc5-certificate.pem.crt"
+        self.AWS_IOT_KEY = "/Users/blown302/d2/keys/6095215bc5-private.pem.key"
+        self.AWS_CLIENT_ID = 'testmacbook'
+
 
 if __name__ == "__main__":
     # import time
@@ -544,13 +552,9 @@ if __name__ == "__main__":
     #char rootCA[] = "/home/blown302/ros-robocar/certs/root-ca.pem";
     #  char clientCRT[] = "/home/blown302/ros-robocar/certs/test.cert.pem";
     # char clientKey[] = "/home/blown302/ros-robocar/certs/test.private.key";
-    
 
-    client = AwsIotCore(cfg=Config(), broker='a1pj26jvxq66z4-ats.iot.us-east-2.amazonaws.com', client_id='test', topic='image_telemetry')
-    for i in range(100):
+    client = AwsIotCore(cfg=Config(), broker='a1pj26jvxq66z4-ats.iot.us-west-2.amazonaws.com')
+    for i in range(20):
+        print("running aws part with counter {}".format(client.counter))
         client.run({'test': 'test'})
-        time.sleep(1)
-
-
-    
-
+        time.sleep(10)

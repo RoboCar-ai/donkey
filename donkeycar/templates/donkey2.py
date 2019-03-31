@@ -554,7 +554,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
     if cfg.PUB_CAMERA_IMAGES:
         from donkeycar.parts.network import AwsIotCore
         # from donkeycar.parts.image import ImgArrToJpg
-        pub = AwsIotCore(cfg=cfg, broker='a1pj26jvxq66z4-ats.iot.us-west-2.amazonaws.com', topic='image_telemetry', inputs=inputs)
+        pub = AwsIotCore(cfg=cfg, broker='a1pj26jvxq66z4-ats.iot.us-west-2.amazonaws.com', inputs=inputs)
         # V.add(ImgArrToJpg(), inputs=['cam/image_array'], outputs=['jpg/bin'])
         V.add(pub, inputs=inputs, outputs=[])
 
