@@ -556,7 +556,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
         # from donkeycar.parts.image import ImgArrToJpg
         pub = AwsIotCore(cfg=cfg, broker='a1pj26jvxq66z4-ats.iot.us-west-2.amazonaws.com', inputs=inputs)
         # V.add(ImgArrToJpg(), inputs=['cam/image_array'], outputs=['jpg/bin'])
-        V.add(pub, inputs=inputs, outputs=[])
+        V.add(pub, inputs=inputs, outputs=[], run_condition='recording')
 
     if type(ctr) is LocalWebController:
         print("You can now go to <your pi ip address>:8887 to drive your car.")
