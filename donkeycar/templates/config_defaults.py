@@ -181,6 +181,7 @@ AWS_IOT_ROOT_CA = ''
 AWS_IOT_KEY = ''
 AWS_IOT_CERT = ''
 AWS_CLIENT_ID = ''
+AWS_IOT_USE_WEBSOCKET = False
 
 
 #meta data. Strings describing location and/or task

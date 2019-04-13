@@ -335,14 +335,16 @@ class AwsIotCore:
 
     def __init__(self, cfg, broker="iot.eclipse.org", inputs=[]):
         from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
-        self.client = AWSIoTMQTTClient(cfg.AWS_CLIENT_ID)
+        self.client = AWSIoTMQTTClient(cfg.AWS_CLIENT_ID, useWebsocket=cfg.AWS_IOT_USE_WEBSOCKET)
         self.topic = 'image_telemetry'
         self.session_topic = 'sessionupdate/{}'.format(cfg.AWS_CLIENT_ID)
         self.session_id = None
         self.session_name = None
         self.inputs = inputs
         self.cfg = cfg
-        self.client.configureEndpoint(broker, 8883)
+        port = 443 if cfg.AWS_IOT_USE_WEBSOCKET else 8883
+        print('AWS_IOT:: using port: {}'.format(port))
+        self.client.configureEndpoint(broker, port)
         print("connecting to broker", broker)
 
         self.client.configureOfflinePublishQueueing(-1) # Infinite offline Publish queueing
@@ -524,6 +526,7 @@ class Config:
         self.AWS_IOT_CERT = "/Users/blown302/d2/keys/6095215bc5-certificate.pem.crt"
         self.AWS_IOT_KEY = "/Users/blown302/d2/keys/6095215bc5-private.pem.key"
         self.AWS_CLIENT_ID = 'testmacbook'
+        self.AWS_IOT_USE_WEBSOCKET = True
 
 
 if __name__ == "__main__":
