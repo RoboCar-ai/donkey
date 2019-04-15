@@ -361,7 +361,7 @@ class AwsIotCore:
             print("updating session")
             print("from topic: ")
             print(message.topic)
-            data = json.loads(message.payload)
+            data = json.loads(message.payload.decode())
             self.session_name = data['name']
             self.session_id = data['id']
             print(data)
