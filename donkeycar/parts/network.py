@@ -4,6 +4,8 @@ import zmq
 import time
 import json
 import os.path as ospath
+import requests
+import shutil
 
 class ZMQValuePub(object):
     '''
@@ -338,6 +340,7 @@ class AwsIotCore:
         self.client = AWSIoTMQTTClient(cfg.AWS_CLIENT_ID, useWebsocket=cfg.AWS_IOT_USE_WEBSOCKET)
         self.topic = 'image_telemetry'
         self.session_topic = 'sessionupdate/{}'.format(cfg.AWS_CLIENT_ID)
+        self.model_deploy_topic = 'modeldeploy/{}'.format(cfg.AWS_CLIENT_ID)
         self.session_id = None
         self.session_name = None
         self.inputs = inputs
@@ -368,8 +371,29 @@ class AwsIotCore:
             print("--------------\n\n")
             # print('saving session: {}'.format(message.data))
 
+        def model_deploy_callback(client, userdata, message):
+            print("updating session")
+            print("from topic: ")
+            print(message.topic)
+            data = json.loads(message.payload.decode())
+            print(data)
+            self.download_model(data['url'])
+            print("--------------\n\n")
+            # print('saving session: {}'.format(message.data))
+
         self.counter = 0
         self.client.subscribe(self.session_topic, 1, session_callback)
+        self.client.subscribe(self.model_deploy_topic, 1, model_deploy_callback)
+
+    def download_model(self, url):
+        print('downloading model from url {}'.format(url))
+        with requests.get(url) as r:
+            if r.status_code > 400:
+                print("couldn't fetch model with code: {}".format(r.status_code))
+            with open(ospath.join(self.cfg.MODELS_PATH, 'model.h5'), 'wb') as f:
+                for chunk in r.iter_content(chunk_size=512):
+                    if chunk:  # filter out keep-alive new chunks
+                        f.write(chunk)
 
     def run(self, *args):
         if self.session_id and self.session_name: # negotiated a session.
@@ -527,11 +551,12 @@ class Config:
         self.AWS_IOT_KEY = "/Users/blown302/d2/keys/6095215bc5-private.pem.key"
         self.AWS_CLIENT_ID = 'testmacbook'
         self.AWS_IOT_USE_WEBSOCKET = True
+        self.MODELS_PATH = '/Users/blown302/Downloads'
 
 
 if __name__ == "__main__":
     # import time
-    # import sys
+    # import sysxx
 
     # #usage:
     # #  for subscriber test, pass ip arg like:
