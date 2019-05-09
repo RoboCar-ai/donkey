@@ -377,7 +377,8 @@ class AwsIotCore:
             print(message.topic)
             data = json.loads(message.payload.decode())
             print(data)
-            self.download_model(data['url'])
+            self.download_model(data['weightsUrl'], filename='model.weights')
+            self.download_model(data['archUrl'], filename='model.json')
             print("--------------\n\n")
             # print('saving session: {}'.format(message.data))
 
@@ -385,12 +386,12 @@ class AwsIotCore:
         self.client.subscribe(self.session_topic, 1, session_callback)
         self.client.subscribe(self.model_deploy_topic, 1, model_deploy_callback)
 
-    def download_model(self, url):
-        print('downloading model from url {}'.format(url))
+    def download_model(self, url, filename):
+        print('downloading model from url {}. saving with filename {}'.format(url, filename))
         with requests.get(url) as r:
             if r.status_code > 400:
                 print("couldn't fetch model with code: {}".format(r.status_code))
-            with open(ospath.join(self.cfg.MODELS_PATH, 'model.h5'), 'wb') as f:
+            with open(ospath.join(self.cfg.MODELS_PATH, filename), 'wb') as f:
                 for chunk in r.iter_content(chunk_size=512):
                     if chunk:  # filter out keep-alive new chunks
                         f.write(chunk)
