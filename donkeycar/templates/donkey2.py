@@ -551,6 +551,20 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
     tub = th.new_tub_writer(inputs=inputs, types=types, user_meta=meta)
     V.add(tub, inputs=inputs, outputs=["tub/num_records"], run_condition='recording')
 
+    from donkeycar.parts.realsense import RS_T265
+    rs = RS_T265(image_output=False)
+    V.add(rs, outputs=['rs/pos', 'rs/vel', 'rs/acc', 'rs/camera/left/img_array'], threaded=True)
+
+    class PosStream:
+        def run(self, pos):
+            # y is up, x is right, z is backwards/forwards
+            return pos.x, pos.z
+
+    V.add(PosStream(), inputs=['rs/pos'], outputs=['pos/x', 'pos/y'])
+
+    inputs += ['pos/x', 'pos/y']
+    types += ['float', 'float']
+
     if cfg.PUB_CAMERA_IMAGES:
         from donkeycar.parts.network import AwsIotCore
         # from donkeycar.parts.image import ImgArrToJpg
