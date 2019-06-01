@@ -547,10 +547,6 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
         inputs += ['pilot/angle', 'pilot/throttle']
         types += ['float', 'float']
     
-    th = TubHandler(path=cfg.DATA_PATH)
-    tub = th.new_tub_writer(inputs=inputs, types=types, user_meta=meta)
-    V.add(tub, inputs=inputs, outputs=["tub/num_records"], run_condition='recording')
-
     from donkeycar.parts.realsense import RS_T265
     rs = RS_T265(image_output=False)
     V.add(rs, outputs=['rs/pos', 'rs/vel', 'rs/acc', 'rs/camera/left/img_array'], threaded=True)
