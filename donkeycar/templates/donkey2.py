@@ -573,8 +573,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
     elif isinstance(ctr, JoystickController):
         print("You can now move your joystick to drive your car.")
         #tell the controller about the tub        
-        ctr.set_tub(tub)
-        
+
         #replace the delete button with neg reward
         if cfg.USE_REWARDS:
             rewardSig.set_tub(tub)
