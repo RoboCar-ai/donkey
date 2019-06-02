@@ -206,3 +206,6 @@ PID_D = -0.2
 PID_THROTTLE = 0.2
 SAVE_PATH_BTN = "cross"
 RESET_ORIGIN_BTN = "triangle"
+
+#RL
+USE_REWARDS = False
