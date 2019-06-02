@@ -405,7 +405,7 @@ class AwsIotCore:
             z = zlib.compress(p)
             # print('publishing data {}'.format(values))
             self.counter += 1
-            self.client.publish(ospath.join(self.topic, self.session_name, str(self.session_id),  str(self.counter) + '.pickle'), bytearray(z), 0)
+            self.client.publishAsync(ospath.join(self.topic, self.session_name, str(self.session_id),  str(self.counter) + '.pickle'), bytearray(z), 0)
 
     def shutdown(self):
         self.client.disconnect()
