@@ -73,7 +73,6 @@ class RS_T265(object):
             self.poll()
 
     def run_threaded(self):
-        print('confidence', self.confidence)
         return self.pos, self.vel, self.acc, self.confidence, self.img
 
     def run(self):
