@@ -41,6 +41,7 @@ class RS_T265(object):
         self.vel = zero_vec
         self.acc = zero_vec
         self.img = None
+        self.confidence = 4
 
     def poll(self):
         try:
@@ -64,6 +65,7 @@ class RS_T265(object):
             self.pos = data.translation
             self.vel = data.velocity
             self.acc = data.acceleration
+            self.confidence = data.tracker_confidence
             logging.debug('realsense pos(%f, %f, %f)' % (self.pos.x, self.pos.y, self.pos.z))
 
     def update(self):
@@ -71,7 +73,8 @@ class RS_T265(object):
             self.poll()
 
     def run_threaded(self):
-        return self.pos, self.vel, self.acc, self.img
+        print('confidence', self.confidence)
+        return self.pos, self.vel, self.acc, self.confidence, self.img
 
     def run(self):
         self.poll()

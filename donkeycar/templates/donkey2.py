@@ -549,7 +549,7 @@ def drive(cfg, model_path=None, use_joystick=False, model_type=None, camera_type
     
     from donkeycar.parts.realsense import RS_T265
     rs = RS_T265(image_output=False)
-    V.add(rs, outputs=['rs/pos', 'rs/vel', 'rs/acc', 'rs/camera/left/img_array'], threaded=True)
+    V.add(rs, outputs=['rs/pos', 'rs/vel', 'rs/acc', 'rs/confidence', 'rs/camera/left/img_array'], threaded=True)
 
     class PosStream:
         def run(self, pos):
